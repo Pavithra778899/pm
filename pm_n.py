@@ -37,43 +37,72 @@ st.set_page_config(
 )
 
 # --- Session State Initialization ---
-for key, value in {
-    "authenticated": False,
-    "username": "",
-    "password": "",
-    "CONN": None,
-    "snowpark_session": None,
-    "chat_history": [],
-    "messages": [],
-    "debug_mode": False,
-    "last_suggestions": [],
-    "chart_x_axis": None,
-    "chart_y_axis": None,
-    "chart_type": "Bar Chart",
-    "current_query": None,
-    "current_results": None,
-    "current_sql": None,
-    "current_summary": None,
-    "service_metadata": [{"name": "", "search_column": ""}],
-    "selected_cortex_search_service": "",
-    "model_name": "mistral-large",
-    "num_retrieved_chunks": 100,
-    "num_chat_messages": 10,
-    "use_chat_history": True,
-    "clear_conversation": False,
-    "show_selector": False,
-    "show_greeting": True,
-    "show_about": False,
-    "show_help": False,
-    "show_history": False,
-    "query": None,
-    "previous_query": None,
-    "previous_sql": None,
-    "previous_results": None,
-    "show_sample_questions": False,
-}.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "username" not in st.session_state:
+    st.session_state.username = ""
+if "password" not in st.session_state:
+    st.session_state.password = ""
+if "CONN" not in st.session_state:
+    st.session_state.CONN = None
+if "snowpark_session" not in st.session_state:
+    st.session_state.snowpark_session = None
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "debug_mode" not in st.session_state:
+    st.session_state.debug_mode = False
+if "last_suggestions" not in st.session_state:
+    st.session_state.last_suggestions = []
+if "chart_x_axis" not in st.session_state:
+    st.session_state.chart_x_axis = None
+if "chart_y_axis" not in st.session_state:
+    st.session_state.chart_y_axis = None
+if "chart_type" not in st.session_state:
+    st.session_state.chart_type = "Bar Chart"
+if "current_query" not in st.session_state:
+    st.session_state.current_query = None
+if "current_results" not in st.session_state:
+    st.session_state.current_results = None
+if "current_sql" not in st.session_state:
+    st.session_state.current_sql = None
+if "current_summary" not in st.session_state:
+    st.session_state.current_summary = None
+if "service_metadata" not in st.session_state:
+    st.session_state.service_metadata = [{"name": "", "search_column": ""}]
+if "selected_cortex_search_service" not in st.session_state:
+    st.session_state.selected_cortex_search_service = ""
+if "model_name" not in st.session_state:
+    st.session_state.model_name = "mistral-large"
+if "num_retrieved_chunks" not in st.session_state:
+    st.session_state.num_retrieved_chunks = 100
+if "num_chat_messages" not in st.session_state:
+    st.session_state.num_chat_messages = 10
+if "use_chat_history" not in st.session_state:
+    st.session_state.use_chat_history = True
+if "clear_conversation" not in st.session_state:
+    st.session_state.clear_conversation = False
+if "show_selector" not in st.session_state:
+    st.session_state.show_selector = False
+if "show_greeting" not in st.session_state:
+    st.session_state.show_greeting = True
+if "show_about" not in st.session_state:
+    st.session_state.show_about = False
+if "show_help" not in st.session_state:
+    st.session_state.show_help = False
+if "show_history" not in st.session_state:
+    st.session_state.show_history = False
+if "query" not in st.session_state:
+    st.session_state.query = None
+if "previous_query" not in st.session_state:
+    st.session_state.previous_query = None
+if "previous_sql" not in st.session_state:
+    st.session_state.previous_sql = None
+if "previous_results" not in st.session_state:
+    st.session_state.previous_results = None
+if "show_sample_questions" not in st.session_state:
+    st.session_state.show_sample_questions = False
 
 # --- CSS Styling ---
 st.markdown("""
@@ -172,7 +201,7 @@ def submit_maintenance_request(property_id: str, tenant_name: str, issue_descrip
         session.sql(insert_query).execute([request_id, property_id, tenant_name, issue_description])
         return True, f"📝 Maintenance request submitted successfully! Request ID: {request_id}"
     except Exception as e:
-        return False, f"Failed to submit maintenance request: {str(e)}"
+        return False, f"❌ Failed to submit maintenance request: {str(e)}"
 
 def start_new_conversation():
     st.session_state.chat_history = []
@@ -199,7 +228,7 @@ def init_service_metadata():
     try:
         services = session.sql('SHOW CORTEX SEARCH SERVICES IN SCHEMA "AI"."DWH_MART";').collect()
         if not services:
-            st.error("No Cortex Search Services found in AI.DWH_MART. Please create a service.")
+            st.error("❌ No Cortex Search Services found in AI.DWH_MART. Please create a service.")
             CORTEX_SEARCH_SERVICES = None
             st.session_state.service_metadata = [{"name": "", "search_column": ""}]
             st.session_state.selected_cortex_search_service = ""
@@ -208,23 +237,23 @@ def init_service_metadata():
         for svc in services:
             svc_name = svc["name"]
             full_name = f'"AI"."DWH_MART"."{svc_name}"'
-            desc_result = session.sql(f'DESC CORTEX SEARCH SERVICE {full_name}').collect()
+            desc_result = session.sql(f'DESC CORTEX SEARCH SERVICE {full_name};').collect()
             if desc_result:
                 service_name = full_name
                 break
         if not service_name:
-            st.error("No valid Cortex Search Service found in AI.DWH_MART.")
+            st.error("❌ No valid Cortex Search Service found in AI.DWH_MART.")
             CORTEX_SEARCH_SERVICES = None
             st.session_state.service_metadata = [{"name": "", "search_column": ""}]
             st.session_state.selected_cortex_search_service = ""
             return
         CORTEX_SEARCH_SERVICES = service_name
-        desc_result = session.sql(f'DESC CORTEX SEARCH SERVICE {service_name}').collect()
+        desc_result = session.sql(f'DESC CORTEX SEARCH SERVICE {service_name};').collect()
         svc_search_col = desc_result[0]["search_column"] if desc_result else ""
         st.session_state.service_metadata = [{"name": service_name, "search_column": svc_search_col}]
         st.session_state.selected_cortex_search_service = service_name
     except Exception as e:
-        st.error(f"Failed to load Cortex Search Service: {str(e)}")
+        st.error(f"❌ Failed to initialize Cortex Search Service: {str(e)}")
         CORTEX_SEARCH_SERVICES = None
         st.session_state.service_metadata = [{"name": "", "search_column": ""}]
         st.session_state.selected_cortex_search_service = ""
@@ -232,7 +261,7 @@ def init_service_metadata():
 def query_cortex_search_service(query: str) -> str:
     try:
         if not st.session_state.selected_cortex_search_service:
-            st.error("No Cortex Search Service selected. Please review your service configuration.")
+            st.error("❌ No Cortex Search Service selected. Please check service configuration.")
             return ""
         db, schema = session.get_current_database(), session.get_current_schema()
         root = Root(session)
@@ -242,9 +271,9 @@ def query_cortex_search_service(query: str) -> str:
             .schemas[schema]
             .cortex_search_services[service_name]
         )
-        desc_result = session.sql(f'DESC CORTEX SEARCH SERVICE {st.session_state.selected_cortex_search_service}').collect()
+        desc_result = session.sql(f'DESC CORTEX SEARCH SERVICE {st.session_state.selected_cortex_search_service};').collect()
         if not desc_result:
-            st.error(f"Cortex Search Service {st.session_state.selected_cortex_search_service} does not exist.")
+            st.error(f"❌ Cortex Search Service {st.session_state.selected_cortex_search_service} does not exist.")
             return ""
         columns = [row["search_column"] for row in desc_result]
         context_documents = cortex_search_service.search(
@@ -253,14 +282,14 @@ def query_cortex_search_service(query: str) -> str:
         results = context_documents.results
         search_col = st.session_state.service_metadata[0]["search_column"] or columns[0] if columns else ""
         if not search_col:
-            st.warning("No search column defined for Cortex Search Service.")
+            st.warning("⚠️ No search column defined for Cortex Search Service.")
             return ""
         context_str = ""
         for i, r in enumerate(results):
             context_str += f"Context document {i+1}: {r.get(search_col, '')}\n\n"
         return context_str
     except Exception as e:
-        st.error(f"Error querying Cortex Search Service: {str(e)}")
+        st.error(f"❌ Error querying Cortex Search Service: {str(e)}")
         return ""
 
 def get_chat_history():
@@ -371,7 +400,7 @@ if not st.session_state.authenticated:
             st.success("Authentication successful! Redirecting...")
             st.rerun()
         except Exception as e:
-            st.error(f"Authentication failed: {str(e)}")
+            st.error(f"Authentication failed: {e}")
 else:
     session = st.session_state.snowpark_session
     root = Root(session)
@@ -901,27 +930,27 @@ else:
 
                 else:
                     response = snowflake_api_call(combined_query, is_structured=False)
-                    _, search_results = process_sse_response(response, is_structured=False)
+                    _, search_results = process_sse_response(response, {})
                     if search_results:
                         raw_result = search_results[0]
-                        response_content = f"**🔍 Generated Response:**\n{summarize_unstructured_answer(raw_result)}"
+                        response_content = f"**🔍 Generated Response:**\n{summarize_unstructured(raw_result)}"
                         with response_placeholder:
                             for chunk in stream_text(response_content):
                                 response_placeholder.markdown(response_content[:response_content.index(chunk) + len(chunk)], unsafe_allow_html=True)
                         assistant_response["content"] = response_content
                         st.session_state.messages.append({"role": "assistant", "content": response_content})
                     else:
-                        failed_response = True
+                      failed_response = True
 
                 if failed_response:
                     suggestions = suggest_sample_questions(combined_query)
-                    response_content = "I am not sure about your question. Here are some suggestions you can try:\n\n"
+                    response_content = "Could not understand your query, please try these suggestions:\n\n"
                     for i, suggestion in enumerate(suggestions, 1):
                         response_content += f"{i}. {suggestion}\n"
                     with response_placeholder:
                         for chunk in stream_text(response_content):
                             response_placeholder.markdown(response_content[:response_content.index(chunk) + len(chunk)], unsafe_allow_html=True)
-                    assistant_response["content"] = response_content
+                    assistant_response["content"]: response_content
                     st.session_state.last_suggestions = suggestions
                     st.session_state.messages.append({"role": "assistant", "content": response_content})
 
