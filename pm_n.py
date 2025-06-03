@@ -37,72 +37,43 @@ st.set_page_config(
 )
 
 # --- Session State Initialization ---
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-if "username" not in st.session_state:
-    st.session_state.username = ""
-if "password" not in st.session_state:
-    st.session_state.password = ""
-if "CONN" not in st.session_state:
-    st.session_state.CONN = None
-if "snowpark_session" not in st.session_state:
-    st.session_state.snowpark_session = None
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "debug_mode" not in st.session_state:
-    st.session_state.debug_mode = False
-if "last_suggestions" not in st.session_state:
-    st.session_state.last_suggestions = []
-if "chart_x_axis" not in st.session_state:
-    st.session_state.chart_x_axis = None
-if "chart_y_axis" not in st.session_state:
-    st.session_state.chart_y_axis = None
-if "chart_type" not in st.session_state:
-    st.session_state.chart_type = "Bar Chart"
-if "current_query" not in st.session_state:
-    st.session_state.current_query = None
-if "current_results" not in st.session_state:
-    st.session_state.current_results = None
-if "current_sql" not in st.session_state:
-    st.session_state.current_sql = None
-if "current_summary" not in st.session_state:
-    st.session_state.current_summary = None
-if "service_metadata" not in st.session_state:
-    st.session_state.service_metadata = [{"name": "", "search_column": ""}]
-if "selected_cortex_search_service" not in st.session_state:
-    st.session_state.selected_cortex_search_service = ""
-if "model_name" not in st.session_state:
-    st.session_state.model_name = "mistral-large"
-if "num_retrieved_chunks" not in st.session_state:
-    st.session_state.num_retrieved_chunks = 100
-if "num_chat_messages" not in st.session_state:
-    st.session_state.num_chat_messages = 10
-if "use_chat_history" not in st.session_state:
-    st.session_state.use_chat_history = True
-if "clear_conversation" not in st.session_state:
-    st.session_state.clear_conversation = False
-if "show_selector" not in st.session_state:
-    st.session_state.show_selector = False
-if "show_greeting" not in st.session_state:
-    st.session_state.show_greeting = True
-if "show_about" not in st.session_state:
-    st.session_state.show_about = False
-if "show_help" not in st.session_state:
-    st.session_state.show_help = False
-if "show_history" not in st.session_state:
-    st.session_state.show_history = False
-if "query" not in st.session_state:
-    st.session_state.query = None
-if "previous_query" not in st.session_state:
-    st.session_state.previous_query = None
-if "previous_sql" not in st.session_state:
-    st.session_state.previous_sql = None
-if "previous_results" not in st.session_state:
-    st.session_state.previous_results = None
-if "show_sample_questions" not in st.session_state:
-    st.session_state.show_sample_questions = False
+for key, value in {
+    "authenticated": False,
+    "username": "",
+    "password": "",
+    "CONN": None,
+    "snowpark_session": None,
+    "chat_history": [],
+    "messages": [],
+    "debug_mode": False,
+    "last_suggestions": [],
+    "chart_x_axis": None,
+    "chart_y_axis": None,
+    "chart_type": "Bar Chart",
+    "current_query": None,
+    "current_results": None,
+    "current_sql": None,
+    "current_summary": None,
+    "service_metadata": [{"name": "", "search_column": ""}],
+    "selected_cortex_search_service": "",
+    "model_name": "mistral-large",
+    "num_retrieved_chunks": 100,
+    "num_chat_messages": 10,
+    "use_chat_history": True,
+    "clear_conversation": False,
+    "show_selector": False,
+    "show_greeting": True,
+    "show_about": False,
+    "show_help": False,
+    "show_history": False,
+    "query": None,
+    "previous_query": None,
+    "previous_sql": None,
+    "previous_results": None,
+    "show_sample_questions": False,
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
 
 # --- CSS Styling ---
 st.markdown("""
@@ -400,13 +371,14 @@ if not st.session_state.authenticated:
             st.success("Authentication successful! Redirecting...")
             st.rerun()
         except Exception as e:
-            st.error(f"Authentication failed: {e}")
+            st.error(f"Authentication failed: {str(e)}")
+    else:
+        return
 else:
     session = st.session_state.snowpark_session
-    root = Root(session)
-    init_service_metadata()
+    st.session_state.root = Root(session)
 
-    def run_snowflake_query(query: str) -> Optional[pd.DataFrame]:
+    def run_snowflake_query(query:: str) -> Optional[pd.DataFrame]:
         try:
             if not query:
                 return None
@@ -930,32 +902,36 @@ else:
 
                 else:
                     response = snowflake_api_call(combined_query, is_structured=False)
-                    _, search_results = process_sse_response(response, {})
+                    _, search_results = process_sse_response(response, is_structured=False)
                     if search_results:
                         raw_result = search_results[0]
-                        response_content = f"**🔍 Generated Response:**\n{summarize_unstructured(raw_result)}"
+                        summary = create_prompt(combined_query)
+                        if summary:
+                            response_content = f"**🔍 Response:**\n{summary}"
+                        else:
+                            response_content = f"**🔍 Key Information:**\n{summarize_unstructured_answer(raw_result)}"
                         with response_placeholder:
                             for chunk in stream_text(response_content):
                                 response_placeholder.markdown(response_content[:response_content.index(chunk) + len(chunk)], unsafe_allow_html=True)
                         assistant_response["content"] = response_content
                         st.session_state.messages.append({"role": "assistant", "content": response_content})
                     else:
-                    failed_response = True
+                        failed_response = True
 
                 if failed_response:
                     suggestions = suggest_sample_questions(combined_query)
-                    response_content = "Could not understand your query, please try these suggestions:\n\n"
+                    response_content = "I am not sure about your question. Here are some suggestions you can try:\n\n"
                     for i, suggestion in enumerate(suggestions, 1):
                         response_content += f"{i}. {suggestion}\n"
                     with response_placeholder:
                         for chunk in stream_text(response_content):
                             response_placeholder.markdown(response_content[:response_content.index(chunk) + len(chunk)], unsafe_allow_html=True)
-                    assistant_response["content": response_content
+                    assistant_response["content"] = response_content
                     st.session_state.last_suggestions = suggestions
                     st.session_state.messages.append({"role": "assistant", "content": response_content})
 
                 st.session_state.chat_history.append(assistant_response)
-                st.session_state.current_query = None
+                st.session_state.current_query = combined_query
                 st.session_state.current_results = assistant_response.get("results")
                 st.session_state.current_sql = assistant_response.get("sql")
                 st.session_state.current_summary = assistant_response.get("summary")
