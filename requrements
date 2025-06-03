@@ -1,0 +1,9 @@
+streamlit>=1.30.0
+requests>=2.31.0
+snowflake-connector-python>=3.0.0
+snowflake-snowpark-python>=1.12.0
+pandas>=2.2.0
+plotly>=5.19.0
+snowflake-core
+textblob
+retrying>=1.3.3
